@@ -151,15 +151,3 @@ jobs:
           done
           curl -sf http://${{ needs.provision.outputs.server_ip }}${HEALTH_PATH} \
             || { echo "ERROR: ${HEALTH_PATH} returned non-2xx after all retries — deploy failed"; exit 1; }
-      - name: Terraform Apply
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "1.6.0"
-      - name: Terraform Init and Apply
-        working-directory: ./terraform
-        run: |
-          terraform init -reconfigure
-          terraform plan -out=tfplan \
-            -var="app_port=3000" \
-            -var="node_version=20"
-          terraform apply -auto-approve tfplan
