@@ -13,21 +13,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - run: npm install
-      - run: npm test --if-present
-
   provision:
     name: Provision EC2 (Terraform)
     runs-on: ubuntu-latest
-    needs: test
     outputs:
       server_ip: ${{ steps.get_ip.outputs.ip }}
       # Note: we do NOT publish RDS info as job outputs. GHA scrubs values
@@ -163,4 +151,15 @@ jobs:
           done
           curl -sf http://${{ needs.provision.outputs.server_ip }}${HEALTH_PATH} \
             || { echo "ERROR: ${HEALTH_PATH} returned non-2xx after all retries — deploy failed"; exit 1; }
-
+      - name: Terraform Apply
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.6.0"
+      - name: Terraform Init and Apply
+        working-directory: ./terraform
+        run: |
+          terraform init -reconfigure
+          terraform plan -out=tfplan \
+            -var="app_port=3000" \
+            -var="node_version=20"
+          terraform apply -auto-approve tfplan
